@@ -2,15 +2,16 @@
 project(Halide)
 cmake_minimum_required(VERSION 3.2)
 
-include(CPack)
 set(CPACK_PACKAGE_VENDOR "Halide")
-set(CPACK_RESOURCE_FILE_LICENSE "LICENSE.txt")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
 set(CPACK_MONOLITHIC_INSTALL OFF)
 if (WIN32)
-  set(CPACK_GENERATOR "ZIP")
+  set(CPACK_GENERATOR ZIP)
 else()
-  set(CPACK_GENERATOR "TGZ")
+  set(CPACK_GENERATOR TGZ)
 endif()
+set(CPACK_PACKAGE_FILE_NAME "Halide")
+include(CPack)
 
 include(CMakePrintHelpers) # REMOVE
 find_package(Threads QUIET)
@@ -56,10 +57,10 @@ set(CMAKE_MACOSX_RPATH ON)
 # Export all symbols
 SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-# Allow for the distribution directory to be explicitly specified
-if (NOT DISTRIB_DIR)
-  set(DISTRIB_DIR "${CMAKE_BINARY_DIR}/distrib")
-endif()
+# # Allow for the distribution directory to be explicitly specified
+# if (NOT DISTRIB_DIR)
+#   set(DISTRIB_DIR "${CMAKE_BINARY_DIR}/distrib")
+# endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -409,7 +410,7 @@ install(FILES
         "${CMAKE_BINARY_DIR}/include/Halide.h"
         "${CMAKE_BINARY_DIR}/include/HalideBuffer.h"
         ${FILES}
-        DESTINATION "${DISTRIB_DIR}/include"
+        DESTINATION include
         )
 # foreach(F ${FILES} "${CMAKE_BINARY_DIR}/include/HalideBuffer.h" "${CMAKE_BINARY_DIR}/include/Halide.h")
 #   install(FILES $)
@@ -439,7 +440,7 @@ install(FILES
 #   endforeach()
 # endforeach()
 install(DIRECTORY tutorial
-        DESTINATION "${DISTRIB_DIR}/tutorial"
+        DESTINATION tutorial
         FILES_MATCHING
         PATTERN "*.h"
         PATTERN "*.sh"
@@ -459,7 +460,7 @@ foreach(F mex_halide.m
           halide_image_info.h)
   # add_to_distrib("${CMAKE_SOURCE_DIR}/tools/${F}" tools)
   install(FILES "${CMAKE_SOURCE_DIR}/tools/${F}"
-          DESTINATION "${DISTRIB_DIR}/tools")
+          DESTINATION tools)
 endforeach()
 
 # ---- README
@@ -468,12 +469,12 @@ file(GLOB FILES "${CMAKE_SOURCE_DIR}/*.md")
 #   add_to_distrib(${F} "")
 # endforeach()
 install(FILES ${FILES}
-        DESTINATION "${DISTRIB_DIR}")
+        DESTINATION .)
 
 # ---- Bazel
 file(GLOB FILES "${CMAKE_SOURCE_DIR}/bazel/*")
 install(FILES ${FILES}
-        DESTINATION "${DISTRIB_DIR}")
+        DESTINATION .)
 # foreach(F ${FILES})
 #   add_to_distrib(${F} "")
 # endforeach()
@@ -481,7 +482,7 @@ install(FILES ${FILES}
 # ---- CMake
 file(GLOB FILES "${CMAKE_SOURCE_DIR}/*.cmake")
 install(FILES ${FILES}
-        DESTINATION "${DISTRIB_DIR}")
+        DESTINATION .)
 # foreach(F ${FILES})
 #   add_to_distrib(${F} "")
 # endforeach()
@@ -493,26 +494,34 @@ foreach(F ${FILES})
   string(REGEX REPLACE "\\.tpl$" "" FNAME "${FNAME}")  # Strip .tpl extension
   configure_file("${F}" "${CMAKE_BINARY_DIR}/${FNAME}" @ONLY)
   install(FILES "${CMAKE_BINARY_DIR}/${FNAME}"
-          DESTINATION "${DISTRIB_DIR}")
+          DESTINATION .)
 endforeach()
 
 # ---- distrib.tgz and distrib.zip
 # file(TO_NATIVE_PATH "${DISTRIB_DIR}" NATIVE_DISTRIB_DIR)
 # file(TO_NATIVE_PATH "${DISTRIB_DIR}/../" NATIVE_ARCHIVE_DIR)
-if (MSVC)
-  # 'cmake -E tar' can create zipfiles as of v3.2+
-  install(CODE
-  "execute_process(COMMAND cmake -E tar -cf \"${DISTRIB_DIR}/../halide.zip\" --format=zip \"${DISTRIB_DIR}\")")
-  # add_custom_target(halide_archive
-  #     DEPENDS build_distrib_dir
-  #     COMMAND cmake -E tar -cf "${NATIVE_ARCHIVE_DIR}/halide.zip" --format=zip "${NATIVE_DISTRIB_DIR}")
-else()
-  install(CODE
-  "execute_process(COMMAND cmake -E tar -czf \"${DISTRIB_DIR}/../halide.tgz\" \"${DISTRIB_DIR}\")")
-  # add_custom_target(halide_archive
-  #     DEPENDS build_distrib_dir
-  #     COMMAND cmake -E tar -czf "${NATIVE_ARCHIVE_DIR}/halide.tgz" "${NATIVE_DISTRIB_DIR}")
-endif()
+# if (MSVC)
+#   # 'cmake -E tar' can create zipfiles as of v3.2+
+#   install(CODE
+#   "execute_process(COMMAND cmake -E tar -cf \"${DISTRIB_DIR}/../halide.zip\" --format=zip \"${DISTRIB_DIR}\")")
+#   # add_custom_target(halide_archive
+#   #     DEPENDS build_distrib_dir
+#   #     COMMAND cmake -E tar -cf "${NATIVE_ARCHIVE_DIR}/halide.zip" --format=zip "${NATIVE_DISTRIB_DIR}")
+# else()
+#   install(CODE
+#   "execute_process(COMMAND cmake -E tar -czf \"${DISTRIB_DIR}/../halide.tgz\" \"${DISTRIB_DIR}\")")
+#   # add_custom_target(halide_archive
+#   #     DEPENDS build_distrib_dir
+#   #     COMMAND cmake -E tar -czf "${NATIVE_ARCHIVE_DIR}/halide.tgz" "${NATIVE_DISTRIB_DIR}")
+# endif()
 
 # add_custom_target(distrib)
 # add_dependencies(distrib build_distrib_dir halide_archive)
+
+get_filename_component(CMAKE_COMMAND_DIR "${CMAKE_COMMAND}" DIRECTORY)
+get_filename_component(CMAKE_COMMAND_EXT "${CMAKE_COMMAND}" EXT)
+
+add_custom_target(distrib
+  COMMAND "${CMAKE_COMMAND_DIR}/cpack${CMAKE_COMMAND_EXT}"
+  -DCPACK_GENERATOR="${CPACK_GENERATOR}"
+  BYPRODUCTS "${CPACK_PACKAGE_FILE_NAME}.${CPACK_GENERATOR}")
